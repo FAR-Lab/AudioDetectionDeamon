@@ -32,7 +32,7 @@ class MicArray(object):
         self.channels = channels
         self.sample_rate = rate
         self.chunk_size = rate * VAD_FRAMES / 1000
-        self.rbuff = RingBuffer(capacity=DOA_FRAMES*640, dtype=FORMAT)
+        self.rbuff = RingBuffer(capacity=DOA_FRAMES*440, dtype=FORMAT)
         
         self.vad = webrtcvad.Vad(3)
         self.speech_count = 0
@@ -103,11 +103,11 @@ class MicArray(object):
                     self.lastDirection =self.get_direction()
                 self.speech_count=0
                 self.doa_chunk_count=0
-            newSpec=False
+            
             if(self.queue.qsize()<1):
-                self.LastSpectrogram = self.get_spectrogram()
-                newSpec=True
-            yield self.queue.qsize(), self.lastDirection ,self.LastSpectrogram,newSpec  #audioop.rms(np.array(self.rbuff), 4)
+                yield  int(self.lastDirection) ,int(audioop.rms(np.array(self.rbuff), 4)),self.get_spectrogram()
+            else:
+                yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), 4))
             #
             #
 
@@ -126,7 +126,7 @@ class MicArray(object):
         self.stop()
 
     def get_spectrogram(self):
-        S= melspectrogram(y=self.rbuff[::4],sr=self.sample_rate,n_mels=128,
+        S= melspectrogram(y=self.rbuff[::4],sr=self.sample_rate,n_mels=232,
                                     fmax=8000, n_fft = 1024)
         return power_to_db(S, ref=np.max)
 
