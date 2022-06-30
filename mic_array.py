@@ -105,9 +105,9 @@ class MicArray(object):
                 self.doa_chunk_count=0
             
             if(self.queue.qsize()<1):
-                yield  int(self.lastDirection) ,int(audioop.rms(np.array(self.rbuff), 4)),self.get_spectrogram()
+                yield  int(self.lastDirection) ,int(audioop.rms(np.array(self.rbuff), self.channels)),self.get_spectrogram()
             else:
-                yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), 4))
+                yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
             #
             #
 
@@ -126,7 +126,7 @@ class MicArray(object):
         self.stop()
 
     def get_spectrogram(self):
-        S= melspectrogram(y=self.rbuff[::4],sr=self.sample_rate,n_mels=232,
+        S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_mels=232,
                                     fmax=8000, n_fft = 1024)
         return power_to_db(S, ref=np.max)
 
