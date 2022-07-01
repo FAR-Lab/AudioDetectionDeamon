@@ -36,7 +36,7 @@ class MicArray(object):
         self.channels = channels
         self.sample_rate = rate
         self.chunk_size = rate * VAD_FRAMES / 1000
-        self.rbuff = RingBuffer(capacity=DOA_FRAMES*440, dtype=FORMAT)
+        self.rbuff = RingBuffer(capacity=rate, dtype=FORMAT) #DOA_FRAMES*880
         
         self.vad = webrtcvad.Vad(3)
         self.speech_count = 0
@@ -98,8 +98,8 @@ class MicArray(object):
 
           #  print(frames.shape,frames.min(),frames.max())
 
-            if self.vad.is_speech(frames[0::self.channels].tobytes(), self.sample_rate):
-                self.speech_count += 1
+            #if self.vad.is_speech(frames[0::self.channels].tobytes(), self.sample_rate):
+           #     self.speech_count += 1
             
             self.doa_chunk_count+=1
             if self.doa_chunk_count==self.doa_chunks_target_count:
@@ -130,9 +130,9 @@ class MicArray(object):
         self.stop()
 
     def get_spectrogram(self):
-        S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_fft=1024,power=1) #n_mels=232,
-        #S= np.abs(stft(y=self.rbuff[::self.channels],n_fft=463,hop_length=260))**2
-        return S#librosa.power_to_db(S,ref=np.max)#power_to_db(S, ref=np.max)
+        #S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_mels=190,n_fft=2048,power=1) #n_mels=232,
+        S= np.abs(stft(y=self.rbuff[::self.channels],n_fft=1024,hop_length=128))**2
+        return librosa.amplitude_to_db(S,ref=np.max)#power_to_db(S, ref=np.max)
 
     def get_direction(self,):
         best_guess = None
