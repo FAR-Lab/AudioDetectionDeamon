@@ -1,10 +1,14 @@
+import sys
+sys.path.append("/home/pi/.local/lib/python3.7/site-packages")
+
 import pyaudio
 import queue
 import threading
 import numpy as np
 from gcc_phat import gcc_phat
 import math
-from librosa import power_to_db
+from librosa import stft
+import librosa
 from  librosa.feature import melspectrogram
 from numpy_ringbuffer import RingBuffer
 import audioop
@@ -45,13 +49,13 @@ class MicArray(object):
         for i in range(self.pyaudio_instance.get_device_count()):
             dev = self.pyaudio_instance.get_device_info_by_index(i)
             name = dev['name'].encode('utf-8')
-            print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+            #print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
             if dev['maxInputChannels'] == self.channels:
-                print('Use {}'.format(name))
+                #print('Use {}'.format(name))
                 device_index = i
                 break
             if(b'seeed-4mic-voicecard' in name):
-                print('Use {} based on its name!'.format(name))
+                #print('Use {} based on its name!'.format(name))
                 device_index = i
                 break
 
@@ -105,9 +109,9 @@ class MicArray(object):
                 self.doa_chunk_count=0
             
             if(self.queue.qsize()<1):
-                yield  int(self.lastDirection) ,int(audioop.rms(np.array(self.rbuff), self.channels)),self.get_spectrogram()
-            else:
                 yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
+            #else:
+                #yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
             #
             #
 
@@ -126,9 +130,9 @@ class MicArray(object):
         self.stop()
 
     def get_spectrogram(self):
-        S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_mels=232,
-                                    fmax=8000, n_fft = 1024)
-        return power_to_db(S, ref=np.max)
+        S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_fft=1024,power=1) #n_mels=232,
+        #S= np.abs(stft(y=self.rbuff[::self.channels],n_fft=463,hop_length=260))**2
+        return S#librosa.power_to_db(S,ref=np.max)#power_to_db(S, ref=np.max)
 
     def get_direction(self,):
         best_guess = None
