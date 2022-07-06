@@ -37,6 +37,7 @@ class MicArray(object):
         self.sample_rate = rate
         self.chunk_size = rate * VAD_FRAMES / 1000
         self.rbuff = RingBuffer(capacity=rate*channels, dtype=FORMAT)  #DOA_FRAMES*440 => 128,86 rate => 128,47
+
         
         self.vad = webrtcvad.Vad(3)
         self.speech_count = 0
@@ -101,9 +102,11 @@ class MicArray(object):
                 continue
 
           #  print(frames.shape,frames.min(),frames.max())
+
             if self.channels>2:
                 if self.vad.is_speech(frames[0::self.channels].tobytes(), self.sample_rate):
                     self.speech_count += 1
+
             
                 self.doa_chunk_count+=1
                 if self.doa_chunk_count==self.doa_chunks_target_count:
