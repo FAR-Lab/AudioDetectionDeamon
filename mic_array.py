@@ -36,7 +36,7 @@ class MicArray(object):
         self.channels = channels
         self.sample_rate = rate
         self.chunk_size = rate * VAD_FRAMES / 1000
-        self.rbuff = RingBuffer(capacity=DOA_FRAMES*440, dtype=FORMAT)
+        self.rbuff = RingBuffer(capacity=rate*channels, dtype=FORMAT)  #DOA_FRAMES*440 => 128,86 rate => 128,47
         
         self.vad = webrtcvad.Vad(3)
         self.speech_count = 0
@@ -49,11 +49,15 @@ class MicArray(object):
         for i in range(self.pyaudio_instance.get_device_count()):
             dev = self.pyaudio_instance.get_device_info_by_index(i)
             name = dev['name'].encode('utf-8')
-            #print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+            print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+            if(b'USB Lavalier Microphone' in name and channels==1):
+                #print('Use {} based on its name!'.format(name))
+                device_index = i
+                break
             if dev['maxInputChannels'] == self.channels:
                 #print('Use {}'.format(name))
                 device_index = i
-                break
+                #break
             if(b'seeed-4mic-voicecard' in name):
                 #print('Use {} based on its name!'.format(name))
                 device_index = i
@@ -97,16 +101,16 @@ class MicArray(object):
                 continue
 
           #  print(frames.shape,frames.min(),frames.max())
-
-            if self.vad.is_speech(frames[0::self.channels].tobytes(), self.sample_rate):
-                self.speech_count += 1
+            if self.channels>2:
+                if self.vad.is_speech(frames[0::self.channels].tobytes(), self.sample_rate):
+                    self.speech_count += 1
             
-            self.doa_chunk_count+=1
-            if self.doa_chunk_count==self.doa_chunks_target_count:
-                if self.speech_count > (self.doa_chunks_target_count / 2):
-                    self.lastDirection =self.get_direction()
-                self.speech_count=0
-                self.doa_chunk_count=0
+                self.doa_chunk_count+=1
+                if self.doa_chunk_count==self.doa_chunks_target_count:
+                    if self.speech_count > (self.doa_chunks_target_count / 2):
+                        self.lastDirection =self.get_direction()
+                    self.speech_count=0
+                    self.doa_chunk_count=0
             
             if(self.queue.qsize()<1):
                 yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
@@ -129,10 +133,12 @@ class MicArray(object):
             return False
         self.stop()
 
+    def get_currentbuff(self,targetRate):
+        return librosa.resample(np.array(self.rbuff[::self.channels]), orig_sr=self.sample_rate, target_sr=targetRate)
     def get_spectrogram(self):
-        S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_fft=1024,power=1) #n_mels=232,
-        #S= np.abs(stft(y=self.rbuff[::self.channels],n_fft=463,hop_length=260))**2
-        return S#librosa.power_to_db(S,ref=np.max)#power_to_db(S, ref=np.max)
+        #S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_fft=1024,power=2) #,n_mels=232
+        S= np.abs(stft(y=self.rbuff[::self.channels])) #hop_length=260
+        return librosa.power_to_db(S**2,ref=np.max)#power_to_db(S, ref=np.max)
 
     def get_direction(self,):
         best_guess = None
