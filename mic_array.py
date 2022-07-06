@@ -7,11 +7,9 @@ import threading
 import numpy as np
 from gcc_phat import gcc_phat
 import math
-from librosa import stft
-import librosa
-from  librosa.feature import melspectrogram
+
 from numpy_ringbuffer import RingBuffer
-import audioop
+
 import webrtcvad
 
 SOUND_SPEED = 343.2
@@ -116,11 +114,9 @@ class MicArray(object):
                     self.doa_chunk_count=0
             
             if(self.queue.qsize()<1):
-                yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
-            #else:
-                #yield  int(self.lastDirection),int(audioop.rms(np.array(self.rbuff), self.channels))
-            #
-            #
+                yield int(self.lastDirection)
+           
+    
 
     def stop(self):
         self.quit_event.set()
@@ -136,14 +132,11 @@ class MicArray(object):
             return False
         self.stop()
 
-    def get_currentbuff(self,targetRate):
-        return librosa.resample(np.array(self.rbuff[::self.channels]), orig_sr=self.sample_rate, target_sr=targetRate)
-    def get_spectrogram(self):
-        #S= melspectrogram(y=self.rbuff[::self.channels],sr=self.sample_rate,n_fft=1024,power=2) #,n_mels=232
-        S= np.abs(stft(y=self.rbuff[::self.channels])) #hop_length=260
-        return librosa.power_to_db(S**2,ref=np.max)#power_to_db(S, ref=np.max)
+    def get_mono_currentbuff(self):
+        return np.array(self.rbuff[::self.channels])
+    
 
-    def get_direction(self,):
+    def get_direction(self):
         best_guess = None
         #buf= np.concatenate(self.doa_chunks)
         buf=np.array(self.rbuff)[-12800:]

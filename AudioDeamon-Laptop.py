@@ -1,4 +1,5 @@
 
+from audioop import rms
 import sys
 
 from mic_array import MicArray
@@ -8,11 +9,13 @@ import tensorflow as tf
 import tensorflowjs as tfjs
 import json
 
-from librosa import power_to_db
+from librosa import power_to_db, resample 
+
 
 import cv2
 
 def main():
+    dispaly = (len(sys.argv)>1 and sys.argv[1]=="display")
     try:
         model = tfjs.converters.load_keras_model("model.json")
         model.compile()
@@ -22,80 +25,60 @@ def main():
 
         with MicArray(48000, 1)  as mic:
             val=time.time()
-            cv2.startWindowThread()
-            cv2.namedWindow("preview")
+            
+            
+            if(dispaly):
+                cv2.startWindowThread()
+                cv2.namedWindow("preview")
+            
             for chunk in mic.read_chunks():
                 
                 if(time.time()>val):
-                    startEvalTime=time.time()
-                    buffer = mic.get_currentbuff(44100)
-                    #print("Buffer length should == rate",len(buffer))
+                    
+                    ### Get the Buffer
+                    buffer = resample(mic.get_mono_currentbuff(),orig_sr=mic.sample_rate,target_sr=44100)
+                     
+                    ### Create the spectrogram
                     waveform = tf.cast(buffer, dtype=tf.float32)
                     spectrogram = tf.signal.stft(waveform, frame_length=2048, frame_step=1000)
-                    spectrogram = power_to_db(tf.abs(spectrogram)[:,:232]**2)
+                    spectrogram = power_to_db(tf.abs(spectrogram)[:,:232]**2,ref=np.median)
                     s = spectrogram[tf.newaxis,..., tf.newaxis]
 
-                    #print("original shape",s.shape)
-
-                    #s=mic.get_spectrogram()-80.0
-                    #print("original shape",s.shape)
+                    ### Compute the Prediction
+                    output= model(s)[0]
+                    cls = classes['wordLabels'][np.argmax(output)]
                     
-                    #s -= s.min()
-                    #s /= 80
-                    #s *= 2550
-                    
-                    #print(s.min(), s.max(),s.shape)
+                    ### Compute the current volume
+                    volume = np.rint(np.sqrt(np.mean(buffer**2))*1000)
 
-                    min=spectrogram.min()
-                    max=spectrogram.max()-min;
-                    img = np.uint8((((spectrogram -min)/max)*255))
-                    #print(img.min(), img.max(),img.shape)
-                    
-                    cv2.imshow("preview",img)
-                    cv2.waitKey(1)
-                    #cv2.imwrite('testImage.png', img)
-                    
-                    #print(img.min(), img.max(),img.shape)
-                    
-                    #s=np.swapaxes(s,0,1)
-
-
-
-                   # resized = s[:43,:232]*2
-                    
-
-                   # min=resized.min()
-                   # max=resized.max()-min;
-                   # img = ((resized -min)/max)*255
-
-                   # print(s.min(), s.max(),s.shape)
-                    #outArray = np.concatenate( [np.array(chunk[:2]),np.array(resized).flatten()],dtype=np.float32)
-                    
-
-                    #s = np.expand_dims(s,axis=0)
-                 
-                    val= model(s)[0]
-                    print(classes['wordLabels'][np.argmax(val)])
-                    
-                    #print(resized.min(), resized.max(),resized.shape)
-                    #sys.stdout.buffer.write(outArray.tobytes())
-                  
+                    ### write output to the stdout
+                    sys.stdout.write(str(cls)+','+str(volume)+','+str(chunk)+'\r\n')
                     sys.stdout.flush()
+
+                    if(dispaly):
+                        min=spectrogram.min()
+                        max=spectrogram.max()-min;
+                        img = np.uint8((((spectrogram -min)/max)*255))
+                        dim=(img.shape[1]*4,img.shape[0]*4)
+                        cv2.putText(img=img, text=cls, org=(10, 10), fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=0.5, color=(255, 255, 255),thickness=1)
+                        cv2.imshow("preview",cv2.resize(img, dim))
+                        cv2.waitKey(1)
+                   
+                  
+                    
 
                     #sys.stderr.write("  "+str(s.min())+":min  max:"+str(s.max()))
                     #sys.stderr.write(str(len(outArray.tobytes())/4))
                     #sys.stderr.flush()
-                    
-                    diff=time.time()-startEvalTime
-                    
-                    val =diff+time.time()
+                    val =0.5+time.time()
                     
                 
 
 
     except KeyboardInterrupt:
-        cv2.imwrite('testImage.png', img)
-        cv2.destroyAllWindows()
+        if dispaly :
+            cv2.imwrite('testImage.png', img)
+            cv2.destroyAllWindows()
         pass
         
     
