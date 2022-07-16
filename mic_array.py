@@ -1,5 +1,5 @@
-import sys
-sys.path.append("/home/pi/.local/lib/python3.7/site-packages")
+#import sys
+#sys.path.append("/home/pi/.local/lib/python3.7/site-packages")
 
 import pyaudio
 import queue
@@ -48,7 +48,7 @@ class MicArray(object):
         for i in range(self.pyaudio_instance.get_device_count()):
             dev = self.pyaudio_instance.get_device_info_by_index(i)
             name = dev['name'].encode('utf-8')
-            print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+            #print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
             if(b'USB Lavalier Microphone' in name and channels==1):
                 #print('Use {} based on its name!'.format(name))
                 device_index = i

@@ -17,19 +17,20 @@ import cv2
 def main():
     dispaly = (len(sys.argv)>1 and sys.argv[1]=="display")
     try:
-        model = tfjs.converters.load_keras_model("model.json")
+        model = tfjs.converters.load_keras_model("../modelFolder/model.json")
         model.compile()
         classes=None
-        with open("./metadata.json") as f:
+        with open("../modelFolder/metadata.json") as f:
             classes = json.loads(f.read())
 
-        with MicArray(48000, 1)  as mic:
+        with MicArray(48000, 4)  as mic:
             val=time.time()
             
             
             if(dispaly):
-                cv2.startWindowThread()
-                cv2.namedWindow("preview")
+                #cv2.startWindowThread()
+                #cv2.namedWindow("preview")
+                pass
             
             for chunk in mic.read_chunks():
                 
@@ -49,7 +50,7 @@ def main():
                     cls = classes['wordLabels'][np.argmax(output)]
                     
                     ### Compute the current volume
-                    volume = np.rint(np.sqrt(np.mean(buffer**2))*1000)
+                    volume = np.rint(np.sqrt(np.mean(buffer**2))*10000)
 
                     ### write output to the stdout
                     sys.stdout.write(str(cls)+','+str(volume)+','+str(chunk)+'\r\n')
@@ -61,8 +62,9 @@ def main():
                         img = np.uint8((((spectrogram -min)/max)*255))
                         dim=(img.shape[1]*4,img.shape[0]*4)
                         cv2.putText(img=img, text=cls, org=(10, 10), fontFace=cv2.FONT_HERSHEY_DUPLEX, fontScale=0.5, color=(255, 255, 255),thickness=1)
-                        cv2.imshow("preview",cv2.resize(img, dim))
-                        cv2.waitKey(1)
+                        cv2.imwrite("tmp.png",img)
+                        #cv2.imshow("preview",cv2.resize(img, dim))
+                        #cv2.waitKey(1)
                    
                   
                     
