@@ -17,10 +17,10 @@ import cv2
 def main():
     dispaly = (len(sys.argv)>1 and sys.argv[1]=="display")
     try:
-        model = tfjs.converters.load_keras_model("../modelFolder/model.json")
+        model = tfjs.converters.load_keras_model("./modelFolder/model.json")
         model.compile()
         classes=None
-        with open("../modelFolder/metadata.json") as f:
+        with open("./modelFolder/metadata.json") as f:
             classes = json.loads(f.read())
 
         with MicArray(48000, 4)  as mic:
